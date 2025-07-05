@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Faculty</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .action-buttons {
+      display: none;
+      gap: 0.5rem;
+    }
+
+    tr:hover .action-buttons {
+      display: inline-flex;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <nav class="navbar">
+      <button onclick="goBack()" class="back-button">⬅ Back</button>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="colleges.html">Colleges</a></li>
+        <li><a href="rankings.html">Rankings</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section id="faculty">
+      <h1>Faculty</h1>
+      <table id="facultyTable" border="1" style="margin: 0 auto;">
+        <thead>
+          <tr>
+            <th>Faculty ID</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>College ID</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h2 style="text-align:center">Add a New Faculty Member</h2>
+      <form id="faculty-form">
+        <label for="name">Name:</label>
+        <input type="text" name="name" required><br>
+
+        <label for="department">Department:</label>
+        <input type="text" name="department" required><br>
+
+        <label for="college_id">College ID:</label>
+        <input type="number" name="college_id" id="college_id" required><br>
+
+        <button type="submit">Add Faculty</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    function getCollegeIdFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('college_id');
+    }
+
+    function fetchFaculty() {
+      const collegeId = getCollegeIdFromURL();
+      let url = 'http://localhost:3000/api/faculty';
+      if (collegeId) {
+        url += `?college_id=${collegeId}`;
+        document.getElementById('college_id').value = collegeId;
+      }
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.querySelector('#facultyTable tbody');
+          tbody.innerHTML = '';
+
+          data.forEach(faculty => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${faculty.Faculty_ID}</td>
+              <td contenteditable="false">${faculty.Name}</td>
+              <td contenteditable="false">${faculty.Department}</td>
+              <td>${faculty.College_ID}</td>
+              <td>
+                <div class="action-buttons">
+                  <button onclick="editFaculty(this, ${faculty.Faculty_ID})">✏️</button>
+                  <button onclick="deleteFaculty(${faculty.Faculty_ID}, this)">🗑️</button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(err => {
+          console.error('Failed to fetch faculty:', err);
+        });
+    }
+
+    function deleteFaculty(id, btn) {
+      if (!confirm("Are you sure you want to delete this faculty member?")) return;
+
+      fetch(`http://localhost:3000/api/delete-faculty/${id}`, {
+        method: 'DELETE'
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Faculty deleted');
+          const row = btn.closest('tr');
+          if (row) row.remove();
+        } else {
+          alert('❌ Failed to delete faculty: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Error deleting faculty:', err);
+        alert('❌ Error occurred while deleting faculty');
+      });
+    }
+
+    function editFaculty(button, id) {
+      const row = button.closest('tr');
+      const cells = row.querySelectorAll('td');
+      const nameCell = cells[1];
+      const departmentCell = cells[2];
+
+      if (button.innerText === '✏️') {
+        nameCell.contentEditable = true;
+        departmentCell.contentEditable = true;
+        button.innerText = '💾';
+      } else {
+        nameCell.contentEditable = false;
+        departmentCell.contentEditable = false;
+
+        const updatedData = {
+          name: nameCell.innerText.trim(),
+          department: departmentCell.innerText.trim()
+        };
+
+        fetch(`http://localhost:3000/api/update-faculty/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedData)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ Faculty updated successfully');
+            fetchFaculty();
+          } else {
+            alert('❌ Failed to update faculty');
+          }
+        });
+
+        button.innerText = '✏️';
+      }
+    }
+
+    document.getElementById('faculty-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const formData = {
+        name: this.name.value,
+        department: this.department.value,
+        college_id: this.college_id.value
+      };
+
+      fetch('http://localhost:3000/api/add-faculty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ Faculty added successfully!');
+            fetchFaculty();
+          } else {
+            alert('❌ Failed to add faculty: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Network error:', err);
+          alert('❌ Error occurred while adding faculty');
+        });
+    });
+
+    function goBack() {
+      if (document.referrer) {
+        window.history.back();
+      } else {
+        window.location.href = 'colleges.html';
+      }
+    }
+
+    window.onload = fetchFaculty;
+  </script>
+
+</body>
+
+</html>

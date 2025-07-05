@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Colleges</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .action-buttons {
+      display: none;
+      gap: 0.5rem;
+    }
+
+    tr:hover .action-buttons {
+      display: inline-flex;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <h1 class="logo">Colleges</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="rankings.html">Rankings</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section id="colleges">
+      <h1>Colleges</h1>
+      <table id="collegeTable" border="1" style="margin: 0 auto;">
+        <thead>
+          <tr>
+            <th>College ID</th>
+            <th>Name</th>
+            <th>Location</th>
+            <th>Established Year</th>
+            <th>Type</th>
+            <th>AICTE Status</th>
+            <th>Courses</th>
+            <th>Faculty</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <h2 style="text-align:center">Add a New College</h2>
+      <form id="college-form">
+        <label for="name">Name:</label>
+        <input type="text" name="name" required><br>
+
+        <label for="location">Location:</label>
+        <input type="text" name="location" required><br>
+
+        <label for="year">Established Year:</label>
+        <input type="number" name="year" required><br>
+
+        <label for="type">Type:</label>
+        <select name="type">
+          <option value="Public">Public</option>
+          <option value="Private">Private</option>
+        </select><br>
+
+        <button type="submit">Add College</button>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    function fetchColleges() {
+      fetch('http://localhost:3000/api/colleges')
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.querySelector('#collegeTable tbody');
+          tbody.innerHTML = '';
+
+          data.forEach(college => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${college.College_ID}</td>
+              <td contenteditable="false">${college.Name}</td>
+              <td contenteditable="false">${college.Location}</td>
+              <td contenteditable="false">${college.Established_Year}</td>
+              <td contenteditable="false">${college.Type}</td>
+              <td>${college.AICTE_Approval_Status}</td>
+              <td><a href="courses.html?college_id=${college.College_ID}">View Courses</a></td>
+              <td><a href="faculty.html?college_id=${college.College_ID}">View Faculty</a></td>
+              <td>
+                <div class="action-buttons">
+                  <button onclick="editCollege(this, ${college.College_ID})">✏️</button>
+                  <button onclick="deleteCollege(${college.College_ID}, this)">🗑️</button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
+        })
+        .catch(err => {
+          console.error('Failed to fetch colleges:', err);
+        });
+    }
+
+    function deleteCollege(id, btn) {
+      if (!confirm("Are you sure you want to delete this college?")) return;
+
+      fetch(`http://localhost:3000/api/delete-college/${id}`, {
+        method: 'DELETE'
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ College deleted');
+          const row = btn.closest('tr');
+          if (row) row.remove();
+        } else {
+          alert('❌ Failed to delete college: ' + data.message);
+        }
+      })
+      .catch(err => {
+        console.error('Error deleting college:', err);
+        alert('❌ Error occurred while deleting college');
+      });
+    }
+
+    function editCollege(button, id) {
+      const row = button.closest('tr');
+      const cells = row.querySelectorAll('td');
+      const nameCell = cells[1];
+      const locationCell = cells[2];
+      const yearCell = cells[3];
+      const typeCell = cells[4];
+
+      if (button.innerText === '✏️') {
+        nameCell.contentEditable = true;
+        locationCell.contentEditable = true;
+        yearCell.contentEditable = true;
+        typeCell.contentEditable = true;
+        button.innerText = '💾';
+      } else {
+        nameCell.contentEditable = false;
+        locationCell.contentEditable = false;
+        yearCell.contentEditable = false;
+        typeCell.contentEditable = false;
+
+        const updatedData = {
+          name: nameCell.innerText.trim(),
+          location: locationCell.innerText.trim(),
+          year: yearCell.innerText.trim(),
+          type: typeCell.innerText.trim()
+        };
+
+        fetch(`http://localhost:3000/api/update-college/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedData)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ College updated successfully');
+          } else {
+            alert('❌ Failed to update college');
+          }
+          fetchColleges();
+        });
+
+        button.innerText = '✏️';
+      }
+    }
+
+    document.getElementById('college-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const formData = {
+        name: this.name.value,
+        location: this.location.value,
+        year: this.year.value,
+        type: this.type.value
+      };
+
+      fetch('http://localhost:3000/api/add-college', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('✅ College added successfully!');
+            fetchColleges();
+          } else {
+            alert('❌ Failed to add college: ' + data.message);
+          }
+        })
+        .catch(err => {
+          console.error('Network error:', err);
+          alert('❌ Error occurred while adding college');
+        });
+    });
+
+    window.onload = fetchColleges;
+  </script>
+</body>
+</html>

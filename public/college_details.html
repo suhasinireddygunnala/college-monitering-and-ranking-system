@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>College Details</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <nav class="navbar">
+      <h1 class="logo">College Details</h1>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="colleges.html">Colleges</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section id="college-info">
+      <h2 id="college-name">College Information</h2>
+    </section>
+
+    <section id="courses">
+      <h2>Courses</h2>
+      <table border="1" style="margin: 0 auto;">
+        <thead>
+          <tr>
+            <th>Course ID</th>
+            <th>Name</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="course-body"></tbody>
+      </table>
+    </section>
+
+    <section id="faculty">
+      <h2>Faculty</h2>
+      <table border="1" style="margin: 0 auto;">
+        <thead>
+          <tr>
+            <th>Faculty ID</th>
+            <th>Name</th>
+            <th>Department</th>
+          </tr>
+        </thead>
+        <tbody id="faculty-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const collegeId = params.get('college_id');
+
+    fetch(`http://localhost:3000/api/colleges/${collegeId}`)
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('college-name').textContent = `${data.Name} - ${data.Location}`;
+      });
+
+    fetch(`http://localhost:3000/api/courses?college_id=${collegeId}`)
+      .then(res => res.json())
+      .then(courses => {
+        const tbody = document.getElementById('course-body');
+        tbody.innerHTML = '';
+        courses.forEach(course => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${course.Course_ID}</td>
+            <td>${course.Course_Name}</td>
+            <td>${course.Duration}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+
+    fetch(`http://localhost:3000/api/faculty?college_id=${collegeId}`)
+      .then(res => res.json())
+      .then(facultyList => {
+        const tbody = document.getElementById('faculty-body');
+        tbody.innerHTML = '';
+        facultyList.forEach(faculty => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${faculty.Faculty_ID}</td>
+            <td>${faculty.Name}</td>
+            <td>${faculty.Department}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+  </script>
+</body>
+</html>
